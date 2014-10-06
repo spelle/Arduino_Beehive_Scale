@@ -7,44 +7,25 @@
 
 
 
-#include <Arduino.h>
 #include <SimpleSWModbusSlave.h>
 #include "SoftwareSerial.h"
 #include <EEPROM.h>
 
 #include <avr/wdt.h>
 
+#include "Arduino_Beehive_Scale.h"
+
+
+
 #define UPDATE_GAUGES_PERIOD 5000
 #define BLINK_LED_PERIOD 1000
 #define CHECK_WRITES_PERIOD 60000
 
-//////////////// registers of your slave ///////////////////
-enum
-{
-  // just add or remove registers and your good to go...
-  // The first register starts at address 0
-  ID,
-  MB_SLAVE_ID,
-  WRITE_AND_REBOOT,
-  DEBUG,
-  CLEAR,
-  SCALE_VAL,
-  GAUGE1_VAL,
-  GAUGE2_VAL,
-  GAUGE3_VAL,
-  SCALE_RAW,
-  GAUGE1_RAW,
-  GAUGE2_RAW,
-  GAUGE3_RAW,
-  HOLDING_REGS_SIZE // leave this one
-  // total number of registers for function 3 and 16 share the same register array
-  // i.e. the same address space
-};
-
-unsigned int holdingRegs[HOLDING_REGS_SIZE]; // function 3 and 16 register array
-////////////////////////////////////////////////////////////
+#define TX_ENABLE_PIN  9
 
 SoftwareSerial SWSerial(10, 11) ; // RX, TX
+
+
 
 void setup()
 {
@@ -61,7 +42,7 @@ void setup()
 	holdingRegs[MB_SLAVE_ID] = EEPROM.read(MB_SLAVE_ID);
 
 	// Enable Debug
-	holdingRegs[DEBUG] = 0x0001 ;
+	holdingRegs[DEBUG_ENABLE] = 0x0001 ;
 
 	Serial.begin(115200);
 
@@ -87,7 +68,7 @@ to this specification and was always able to communicate... Go figure.
 These byte formats are already defined in the Arduino global name space.
 	 */
 	unsigned char sID = (unsigned char)((0 == holdingRegs[ID] ? 0x0002 : holdingRegs[ID]) & 0x00FF) ;
-	modbus_configure(&SWSerial, 9600, /*SERIAL_8N2,*/ sID, 3, HOLDING_REGS_SIZE, holdingRegs);
+	modbus_configure(&SWSerial, 9600, /*SERIAL_8N2,*/ sID, TX_ENABLE_PIN, HOLDING_REGS_SIZE, holdingRegs);
 
 	Serial.println("--- Arduino Beehive Scale ---");
 	Serial.print("Beehive ID : ");
@@ -109,16 +90,18 @@ void loop()
 
 	if( ulCurrentTime > ulNextTimeGauges )
 	{
-		if( 0x0000 != holdingRegs[DEBUG] )
-		{
-			Serial.print(ulCurrentTime) ;
-			Serial.println(" : Reading Gauges");
-		}
+		PDEBUG( ulCurrentTime, " : Reading Gauges" ) ;
 
 		// Update gauges values
 		holdingRegs[GAUGE1_RAW] = analogRead(0) ;
+		PDEBUG( ulCurrentTime, " : Gauge #1 :" ) ;
+		PDEBUG( ulCurrentTime, holdingRegs[GAUGE1_RAW] ) ;
 		holdingRegs[GAUGE1_RAW] = analogRead(1) ;
+		PDEBUG( ulCurrentTime, " : Gauge #2 :" ) ;
+		PDEBUG( ulCurrentTime, holdingRegs[GAUGE2_RAW] ) ;
 		holdingRegs[GAUGE2_RAW] = analogRead(2) ;
+		PDEBUG( ulCurrentTime, " : Gauge #3 :" ) ;
+		PDEBUG( ulCurrentTime, holdingRegs[GAUGE3_RAW] ) ;
 
 		ulNextTimeGauges = ulCurrentTime + UPDATE_GAUGES_PERIOD ;
 	}
@@ -127,11 +110,7 @@ void loop()
 	{
 		boolean rebootFlag = false ;
 
-		if( 0x0000 != holdingRegs[DEBUG] )
-		{
-			Serial.print(ulCurrentTime) ;
-			Serial.println("Processing eventual Writes");
-		}
+		PDEBUG( ulCurrentTime, " : Processing eventual Writes");
 
 		if( holdingRegs[ID] != EEPROM.read(ID) )
 		{
@@ -145,7 +124,7 @@ void loop()
 			rebootFlag = true ;
 		}
 
-		if( 0x0000 != holdingRegs[CLEAR] )
+		if( 0x0000 != holdingRegs[CLEAR_EEPROM] )
 		{
 			// write a 0 to all 512 bytes of the EEPROM
 			for (int i = 0; i < 512; i++)
@@ -157,11 +136,7 @@ void loop()
 
 		if( true == rebootFlag )
 		{
-			if( 0x0000 != holdingRegs[DEBUG] )
-			{
-				Serial.print(ulCurrentTime) ;
-				Serial.println("Writes occured ; reboot");
-			}
+			PDEBUG( ulCurrentTime, " : Writes occured ; reboot");
 
 			wdt_enable(WDTO_15MS); // reboot !
 		}
