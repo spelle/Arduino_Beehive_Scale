@@ -94,13 +94,13 @@ void loop()
 
 		// Update gauges values
 		holdingRegs[GAUGE1_RAW] = analogRead(0) ;
-		PDEBUG( ulCurrentTime, " : Gauge #1 :" ) ;
+		PDEBUG( ulCurrentTime, " : Gauge #1 : " ) ;
 		PDEBUG( ulCurrentTime, holdingRegs[GAUGE1_RAW] ) ;
-		holdingRegs[GAUGE1_RAW] = analogRead(1) ;
-		PDEBUG( ulCurrentTime, " : Gauge #2 :" ) ;
+		holdingRegs[GAUGE2_RAW] = analogRead(1) ;
+		PDEBUG( ulCurrentTime, " : Gauge #2 : " ) ;
 		PDEBUG( ulCurrentTime, holdingRegs[GAUGE2_RAW] ) ;
-		holdingRegs[GAUGE2_RAW] = analogRead(2) ;
-		PDEBUG( ulCurrentTime, " : Gauge #3 :" ) ;
+		holdingRegs[GAUGE3_RAW] = analogRead(2) ;
+		PDEBUG( ulCurrentTime, " : Gauge #3 : " ) ;
 		PDEBUG( ulCurrentTime, holdingRegs[GAUGE3_RAW] ) ;
 
 		ulNextTimeGauges = ulCurrentTime + UPDATE_GAUGES_PERIOD ;
