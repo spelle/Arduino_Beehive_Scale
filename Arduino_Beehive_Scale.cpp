@@ -86,6 +86,14 @@ void loop()
 	static unsigned long ulNextTimeChecks = CHECK_WRITES_PERIOD ;
 	static unsigned long ulNextTimeLED = BLINK_LED_PERIOD ;
 
+#ifdef SIMU
+
+	static unsigned long ulNextTimeIncrementSineIndex = SIMULATIONSINE_PERIOD ;
+
+	static unsigned int uiSimulationIndex = 0 ;
+
+#endif
+
 	ulCurrentTime = millis() ;
 
 	if( ulCurrentTime > ulNextTimeGauges )
@@ -102,6 +110,15 @@ void loop()
 		holdingRegs[GAUGE3_RAW] = analogRead(2) ;
 		PDEBUG( ulCurrentTime, " : Gauge #3 : " ) ;
 		PDEBUG( ulCurrentTime, holdingRegs[GAUGE3_RAW] ) ;
+
+#ifndef SIMU
+
+		holdingRegs[SCALE_RAW] =
+				holdingRegs[GAUGE1_RAW] +
+				holdingRegs[GAUGE2_RAW] +
+				holdingRegs[GAUGE3_RAW] ;
+
+#endif
 
 		ulNextTimeGauges = ulCurrentTime + UPDATE_GAUGES_PERIOD ;
 	}
@@ -133,7 +150,6 @@ void loop()
 		  rebootFlag = true ;
 		}
 
-
 		if( true == rebootFlag )
 		{
 			PDEBUG( ulCurrentTime, " : Writes occured ; reboot");
@@ -143,6 +159,26 @@ void loop()
 
 		ulNextTimeChecks = ulCurrentTime + CHECK_WRITES_PERIOD ;
 	}
+
+#ifdef SIMU
+
+	if( ulCurrentTime > ulNextTimeIncrementSineIndex )
+	{
+		if( SIMULATIONSINE_NB_STEP <= uiSimulationIndex )
+		{
+			uiSimulationIndex++ ;
+		}
+		else
+		{
+			uiSimulationIndex = 0 ;
+		}
+
+		holdingRegs[SCALE_RAW] = simulationSine[uiSimulationIndex] ;
+
+		ulNextTimeIncrementSineIndex = ulCurrentTime + SIMULATIONSINE_PERIOD ;
+	}
+
+#endif
 
 	if( ulCurrentTime > ulNextTimeLED )
 	{
