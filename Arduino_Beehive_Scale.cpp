@@ -17,10 +17,12 @@
 
 
 
-#define UPDATE_GAUGES_PERIOD 5000
-#define BLINK_LED_PERIOD 1000
-#define CHECK_WRITES_PERIOD 60000
-
+#define UPDATE_GAUGES_PERIOD 4999
+#define BLINK_LED_PERIOD 999
+#define CHECK_WRITES_PERIOD 59999
+#ifdef SCALE_SIMU
+		#define SIMULATIONSINE_PERIOD  999
+#endif
 #define TX_ENABLE_PIN  9
 
 SoftwareSerial SWSerial(10, 11) ; // RX, TX
@@ -70,11 +72,14 @@ These byte formats are already defined in the Arduino global name space.
 	unsigned char sID = (unsigned char)((0 == holdingRegs[ID] ? 0x0002 : holdingRegs[ID]) & 0x00FF) ;
 	modbus_configure(&SWSerial, 9600, /*SERIAL_8N2,*/ sID, TX_ENABLE_PIN, HOLDING_REGS_SIZE, holdingRegs);
 
-	Serial.println("--- Arduino Beehive Scale ---");
-	Serial.print("Beehive ID : ");
-	Serial.println(holdingRegs[ID]);
-	Serial.print("Beehive Modbus Slave ID : ");
-	Serial.println(sID);
+#ifdef DEBUG
+	PDEBUG( 0x00, " : --- Arduino Beehive Scale ---" ) ;
+	PDEBUG( 0x00, " : Beehive ID : ");
+	PDEBUG( 0x00, holdingRegs[ID]);
+	PDEBUG( 0x00, ": Beehive Modbus Slave ID : ");
+	PDEBUG( 0x00, sID);
+#endif
+
 }
 
 void loop()
@@ -86,18 +91,18 @@ void loop()
 	static unsigned long ulNextTimeChecks = CHECK_WRITES_PERIOD ;
 	static unsigned long ulNextTimeLED = BLINK_LED_PERIOD ;
 
-#ifdef SIMU
-
+#ifdef SCALE_SIMU
 	static unsigned long ulNextTimeIncrementSineIndex = SIMULATIONSINE_PERIOD ;
 
 	static unsigned int uiSimulationIndex = 0 ;
-
 #endif
 
 	ulCurrentTime = millis() ;
 
 	if( ulCurrentTime > ulNextTimeGauges )
 	{
+#ifndef SCALE_SIMU
+
 		PDEBUG( ulCurrentTime, " : Reading Gauges" ) ;
 
 		// Update gauges values
@@ -111,14 +116,14 @@ void loop()
 		PDEBUG( ulCurrentTime, " : Gauge #3 : " ) ;
 		PDEBUG( ulCurrentTime, holdingRegs[GAUGE3_RAW] ) ;
 
-#ifndef SIMU
-
 		holdingRegs[SCALE_RAW] =
 				holdingRegs[GAUGE1_RAW] +
 				holdingRegs[GAUGE2_RAW] +
 				holdingRegs[GAUGE3_RAW] ;
-
 #endif
+
+		PDEBUG( ulCurrentTime, ": Scale Raw Value :" ) ;
+		PDEBUG( ulCurrentTime, holdingRegs[SCALE_RAW] ) ;
 
 		ulNextTimeGauges = ulCurrentTime + UPDATE_GAUGES_PERIOD ;
 	}
@@ -127,7 +132,7 @@ void loop()
 	{
 		boolean rebootFlag = false ;
 
-		PDEBUG( ulCurrentTime, " : Processing eventual Writes");
+		PDEBUG( ulCurrentTime, " : Processing eventual Writes") ;
 
 		if( holdingRegs[ID] != EEPROM.read(ID) )
 		{
@@ -160,11 +165,11 @@ void loop()
 		ulNextTimeChecks = ulCurrentTime + CHECK_WRITES_PERIOD ;
 	}
 
-#ifdef SIMU
+#ifdef SCALE_SIMU
 
 	if( ulCurrentTime > ulNextTimeIncrementSineIndex )
 	{
-		if( SIMULATIONSINE_NB_STEP <= uiSimulationIndex )
+		if( SIMULATIONSINE_NB_STEP >= uiSimulationIndex )
 		{
 			uiSimulationIndex++ ;
 		}
@@ -173,12 +178,15 @@ void loop()
 			uiSimulationIndex = 0 ;
 		}
 
+		PDEBUG( ulCurrentTime, " : Processing Sine Simulation" ) ;
+
 		holdingRegs[SCALE_RAW] = simulationSine[uiSimulationIndex] ;
 
 		ulNextTimeIncrementSineIndex = ulCurrentTime + SIMULATIONSINE_PERIOD ;
 	}
 
 #endif
+
 
 	if( ulCurrentTime > ulNextTimeLED )
 	{
