@@ -14,7 +14,7 @@
 #include <avr/wdt.h>
 
 #include "Arduino_Beehive_Scale.h"
-
+#include "Arduino_Simu_Sine.h"
 
 
 #define UPDATE_GAUGES_PERIOD 4999
@@ -93,8 +93,6 @@ void loop()
 
 #ifdef SCALE_SIMU
 	static unsigned long ulNextTimeIncrementSineIndex = SIMULATIONSINE_PERIOD ;
-
-	static unsigned int uiSimulationIndex = 0 ;
 #endif
 
 	ulCurrentTime = millis() ;
@@ -169,18 +167,9 @@ void loop()
 
 	if( ulCurrentTime > ulNextTimeIncrementSineIndex )
 	{
-		if( SIMULATIONSINE_NB_STEP >= uiSimulationIndex )
-		{
-			uiSimulationIndex++ ;
-		}
-		else
-		{
-			uiSimulationIndex = 0 ;
-		}
-
 		PDEBUG( ulCurrentTime, " : Processing Sine Simulation" ) ;
 
-		holdingRegs[SCALE_RAW] = simulationSine[uiSimulationIndex] ;
+		holdingRegs[SCALE_RAW] = getSineValue() ;
 
 		ulNextTimeIncrementSineIndex = ulCurrentTime + SIMULATIONSINE_PERIOD ;
 	}
